@@ -22,7 +22,7 @@ namespace ReactNative.UIManager
 
         public static DisplayMetrics GetForCurrentView()
         {
-            var content = (FrameworkElement)Application.Current.MainWindow.Content;
+            var content = (FrameworkElement)Application.Current.MainWindow;
             return new DisplayMetrics(
                 content?.ActualWidth ?? 0.0,
                 content?.ActualHeight ?? 0.0,

@@ -528,12 +528,14 @@ namespace ReactNative.Modules.Network
 
         private static IHttpClient CreateDefaultHttpClient()
         {
-            return new DefaultHttpClient(
-                new HttpClient(
-                    new HttpBaseProtocolFilter
-                    {
-                        AllowAutoRedirect = true,
-                    }));
+            HttpBaseProtocolFilter filter = new HttpBaseProtocolFilter
+            {
+                AllowAutoRedirect = true,
+            };
+#if DEBUG
+            filter.ServerCertificateValidationCallback = (message, certificate2, arg3, arg4) => true;
+#endif
+            return new DefaultHttpClient(new HttpClient(filter));
         }
     }
 }
