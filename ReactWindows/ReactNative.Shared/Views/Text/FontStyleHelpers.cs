@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 #if WINDOWS_UWP
 using Windows.UI.Text;
 #else
@@ -11,6 +10,19 @@ namespace ReactNative.Views.Text
 {
     static class FontStyleHelpers
     {
+        public static FontStyle? ParseFontStyle(string fontStyleString)
+        {
+            if (fontStyleString == "normal")
+            {
+                return FontStyles.Normal;
+            }
+            else if (fontStyleString == "italic")
+            {
+                return FontStyles.Italic;
+            }
+            return null;
+        }
+
         public static FontWeight? ParseFontWeight(string fontWeightString)
         {
             var fontWeightNumeric = fontWeightString != null
