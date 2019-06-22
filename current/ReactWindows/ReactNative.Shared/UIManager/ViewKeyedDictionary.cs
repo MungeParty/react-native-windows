@@ -60,7 +60,10 @@ namespace ReactNative.UIManager
 #if WINDOWS_UWP
             _dictionary.AddOrUpdate(key, value, (k, v) => value);
 #else
-            _dictionary.Add(key, value);
+            if (_dictionary.ContainsKey(key))
+                _dictionary[key] = value;
+            else
+                _dictionary.Add(key, value);
 #endif
         }
 
