@@ -532,9 +532,9 @@ namespace ReactNative.Modules.Network
             {
                 AllowAutoRedirect = true,
             };
-#if DEBUG
+//#if DEBUG
             filter.ServerCertificateValidationCallback = (message, certificate2, arg3, arg4) => true;
-#endif
+//#endif
             return new DefaultHttpClient(new HttpClient(filter));
         }
     }

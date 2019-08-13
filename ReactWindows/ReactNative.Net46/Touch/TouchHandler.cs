@@ -28,9 +28,9 @@ namespace ReactNative.Touch
             _view.MouseDown += OnMouseDown;
             _view.MouseMove += OnMouseMove;
             _view.MouseUp += OnMouseUp;
-            _view.TouchDown += OnTouchPressed;
-            _view.TouchMove += OnTouchMoved;
-            _view.TouchUp += OnTouchReleased;
+            //_view.TouchDown += OnTouchPressed;
+            //_view.TouchMove += OnTouchMoved;
+            //_view.TouchUp += OnTouchReleased;
         }
 
         public void Dispose()
@@ -38,9 +38,9 @@ namespace ReactNative.Touch
             _view.MouseDown -= OnMouseDown;
             _view.MouseMove -= OnMouseMove;
             _view.MouseUp -= OnMouseUp;
-            _view.TouchDown -= OnTouchPressed;
-            _view.TouchMove -= OnTouchMoved;
-            _view.TouchUp -= OnTouchReleased;
+            //_view.TouchDown -= OnTouchPressed;
+            //_view.TouchMove -= OnTouchMoved;
+            //_view.TouchUp -= OnTouchReleased;
         }
 
         public static void OnPointerEntered(DependencyObject view, MouseEventArgs e)

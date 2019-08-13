@@ -101,6 +101,7 @@
       <HintPath>$(SolutionDir)\packages\System.Reactive.Windows.Threading.4.0.0-preview00001\lib\net45\System.Reactive.Windows.Threading.dll</HintPath>
     </Reference>
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Windows" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
