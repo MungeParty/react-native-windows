@@ -27,6 +27,7 @@ namespace ReactNative.Modules.Storage
             { '.', "{dot}" },
             { '{', "{ocb}" },
             { '}', "{ccb}" },
+            { '\0', "{nul}" },
         };
 
         private static readonly IDictionary<string, char> s_stringToChar = s_charToString.ToDictionary(kv => kv.Value, kv => kv.Key);
