@@ -373,6 +373,7 @@ namespace ReactNative.Views.Scroll
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 Focusable = false,
+                PanningMode = PanningMode.Both,
             };
 
             _scrollViewerData.Add(scrollViewer, scrollViewerData);
