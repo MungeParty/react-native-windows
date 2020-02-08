@@ -24,13 +24,15 @@ namespace ReactNative.Touch
         {
             _view = view;
             _pointers = new List<ReactPointer>();
+            
+            Stylus.SetIsPressAndHoldEnabled(_view, false);
 
             _view.MouseDown += OnMouseDown;
             _view.MouseMove += OnMouseMove;
             _view.MouseUp += OnMouseUp;
-            //_view.TouchDown += OnTouchPressed;
-            //_view.TouchMove += OnTouchMoved;
-            //_view.TouchUp += OnTouchReleased;
+            _view.TouchDown += OnTouchPressed;
+            _view.TouchMove += OnTouchMoved;
+            _view.TouchUp += OnTouchReleased;
         }
 
         public void Dispose()
@@ -38,9 +40,9 @@ namespace ReactNative.Touch
             _view.MouseDown -= OnMouseDown;
             _view.MouseMove -= OnMouseMove;
             _view.MouseUp -= OnMouseUp;
-            //_view.TouchDown -= OnTouchPressed;
-            //_view.TouchMove -= OnTouchMoved;
-            //_view.TouchUp -= OnTouchReleased;
+            _view.TouchDown -= OnTouchPressed;
+            _view.TouchMove -= OnTouchMoved;
+            _view.TouchUp -= OnTouchReleased;
         }
 
         public static void OnPointerEntered(DependencyObject view, MouseEventArgs e)
@@ -72,7 +74,9 @@ namespace ReactNative.Touch
             var originalSource = e.OriginalSource as DependencyObject;
             var rootPoint = e.GetTouchPoint(_view);
             var reactView = GetReactViewTarget(originalSource, rootPoint.Position);
-            if (reactView != null && _view.CaptureTouch(e.TouchDevice))
+            // NOTE: removing touch capture on the windows side as it 
+            // interferes with DirectManipulation, such as ScrollViewer
+            if (reactView != null) //&& _view.CaptureTouch(e.TouchDevice))
             {
                 var viewPoint = rootPoint.Position;
                 var reactTag = reactView.GetReactCompoundView().GetReactTagAtPoint(reactView, viewPoint);
@@ -98,6 +102,8 @@ namespace ReactNative.Touch
 
         private void OnMouseDown(object sender, MouseButtonEventArgs e)
         {
+            // NOTE: ingore mouse events that aren't from the mouse
+            if (e.StylusDevice != null) return;
             var originalSource = e.OriginalSource as DependencyObject;
             var rootPoint = e.GetPosition(_view);
             var reactView = GetReactViewTarget(originalSource, rootPoint);
@@ -137,6 +143,8 @@ namespace ReactNative.Touch
 
         private void OnMouseMove(object sender, MouseEventArgs e)
         {
+            // NOTE: ingore mouse events that aren't from the mouse
+            if (e.StylusDevice != null) return;
             var pointerIndex = IndexOfPointerWithId((uint)e.Device.GetHashCode());
             if (_pointers != null && pointerIndex >= 0)
             {
@@ -153,6 +161,8 @@ namespace ReactNative.Touch
 
         private void OnMouseUp(object sender, MouseButtonEventArgs e)
         {
+            // NOTE: ingore mouse events that aren't from the mouse
+            if (e.StylusDevice != null) return;
             OnPointerConcluded(TouchEventType.End, e);
         }
 
