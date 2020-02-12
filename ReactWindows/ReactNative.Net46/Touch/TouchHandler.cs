@@ -17,14 +17,12 @@ namespace ReactNative.Touch
     {
         private readonly FrameworkElement _view;
         private readonly List<ReactPointer> _pointers;
-
-        private uint _pointerIDs;
-
+		
         public TouchHandler(FrameworkElement view)
         {
             _view = view;
             _pointers = new List<ReactPointer>();
-            
+
             Stylus.SetIsPressAndHoldEnabled(_view, false);
 
             _view.MouseDown += OnMouseDown;
@@ -74,16 +72,18 @@ namespace ReactNative.Touch
             var originalSource = e.OriginalSource as DependencyObject;
             var rootPoint = e.GetTouchPoint(_view);
             var reactView = GetReactViewTarget(originalSource, rootPoint.Position);
-            // NOTE: removing touch capture on the windows side as it 
-            // interferes with DirectManipulation, such as ScrollViewer
+            // removing touch capture from press on the windows side as it 
+            // interferes with DirectManipulation, such as ScrollViewer.
+            // touches must be captured on the move event.
             if (reactView != null) //&& _view.CaptureTouch(e.TouchDevice))
             {
-                var viewPoint = rootPoint.Position;
+                var pointerIndex = _pointers.Count;
+                var viewPoint = e.GetTouchPoint(reactView).Position; // rootPoint.Position;
                 var reactTag = reactView.GetReactCompoundView().GetReactTagAtPoint(reactView, viewPoint);
                 var pointer = new ReactPointer();
                 pointer.Target = reactTag;
-                pointer.PointerId = (uint)rootPoint.TouchDevice.Id;
-                pointer.Identifier = ++_pointerIDs;
+                pointer.PointerId = (uint)e.TouchDevice.Id;
+                pointer.Identifier = (uint)pointerIndex;
                 pointer.PointerType = "touch";
                 pointer.IsLeftButton = false;
                 pointer.IsRightButton = false;
@@ -93,8 +93,6 @@ namespace ReactNative.Touch
                 pointer.ReactView = reactView;
                 var timestamp = e.Timestamp;
                 UpdatePointerForEvent(pointer, rootPoint.Position, viewPoint, timestamp);
-
-                var pointerIndex = _pointers.Count;
                 _pointers.Add(pointer);
                 DispatchTouchEvent(TouchEventType.Start, _pointers, pointerIndex);
             }
@@ -102,19 +100,19 @@ namespace ReactNative.Touch
 
         private void OnMouseDown(object sender, MouseButtonEventArgs e)
         {
-            // NOTE: ingore mouse events that aren't from the mouse
             if (e.StylusDevice != null) return;
             var originalSource = e.OriginalSource as DependencyObject;
             var rootPoint = e.GetPosition(_view);
             var reactView = GetReactViewTarget(originalSource, rootPoint);
             if (reactView != null && _view.CaptureMouse())
             {
+                var pointerIndex = _pointers.Count;
                 var viewPoint = e.GetPosition(reactView);
                 var reactTag = reactView.GetReactCompoundView().GetReactTagAtPoint(reactView, viewPoint);
                 var pointer = new ReactPointer();
                 pointer.Target = reactTag;
                 pointer.PointerId = (uint)e.Device.GetHashCode();
-                pointer.Identifier = ++_pointerIDs;
+                pointer.Identifier = (uint)pointerIndex;
                 pointer.PointerType = "mouse";
                 pointer.IsLeftButton = e.LeftButton == MouseButtonState.Pressed;
                 pointer.IsRightButton = e.RightButton == MouseButtonState.Pressed;
@@ -125,7 +123,6 @@ namespace ReactNative.Touch
                 var timestamp = e.Timestamp;
                 UpdatePointerForEvent(pointer, rootPoint, viewPoint, timestamp);
 
-                var pointerIndex = _pointers.Count;
                 _pointers.Add(pointer);
                 DispatchTouchEvent(TouchEventType.Start, _pointers, pointerIndex);
             }
@@ -133,17 +130,25 @@ namespace ReactNative.Touch
 
         private void OnTouchMoved(object sender, TouchEventArgs e)
         {
-            if (_pointers != null && _pointers.Count > 0)
+            var pointerIndex = IndexOfPointerWithId((uint)e.TouchDevice.Id);
+            if (_pointers != null && pointerIndex >= 0)
             {
-                var pointer = _pointers[0];
+                var pointer = _pointers[pointerIndex];
+                if (e.TouchDevice.Captured == null)
+                {
+                    // at this point, direct manipulation will have taken
+                    // over and captured the touch if applicable, so it's
+                    // safe to capture the touch.
+                    pointer.ReactView.CaptureTouch(e.TouchDevice);
+                }
+
                 UpdatePointerForEvent(pointer, e);
-                DispatchTouchEvent(TouchEventType.Move, _pointers, 0);
+                DispatchTouchEvent(TouchEventType.Move, _pointers, pointerIndex);
             }
         }
 
         private void OnMouseMove(object sender, MouseEventArgs e)
         {
-            // NOTE: ingore mouse events that aren't from the mouse
             if (e.StylusDevice != null) return;
             var pointerIndex = IndexOfPointerWithId((uint)e.Device.GetHashCode());
             if (_pointers != null && pointerIndex >= 0)
@@ -161,26 +166,19 @@ namespace ReactNative.Touch
 
         private void OnMouseUp(object sender, MouseButtonEventArgs e)
         {
-            // NOTE: ingore mouse events that aren't from the mouse
             if (e.StylusDevice != null) return;
             OnPointerConcluded(TouchEventType.End, e);
         }
 
         private void OnTouchConcluded(TouchEventType touchEventType, TouchEventArgs e)
         {
-            if (_pointers != null && _pointers.Count > 0)
+            var pointerIndex = IndexOfPointerWithId((uint)e.TouchDevice.Id);
+            if (_pointers != null && pointerIndex >= 0)
             {
-                var pointer = _pointers[0];
+                var pointer = _pointers[pointerIndex];
                 UpdatePointerForEvent(pointer, e);
-                DispatchTouchEvent(touchEventType, _pointers, 0);
-
-                _pointers.RemoveAt(0);
-
-                if (_pointers.Count == 0)
-                {
-                    _pointerIDs = 0;
-                }
-
+                DispatchTouchEvent(touchEventType, _pointers, pointerIndex);
+                _pointers.RemoveAt(pointerIndex);
                 _view.ReleaseAllTouchCaptures();
             }
         }
@@ -193,14 +191,7 @@ namespace ReactNative.Touch
                 var pointer = _pointers[pointerIndex];
                 UpdatePointerForEvent(pointer, e);
                 DispatchTouchEvent(touchEventType, _pointers, pointerIndex);
-
                 _pointers.RemoveAt(pointerIndex);
-
-                if (_pointers.Count == 0)
-                {
-                    _pointerIDs = 0;
-                }
-
                 _view.ReleaseMouseCapture();
             }
         }
@@ -311,7 +302,7 @@ namespace ReactNative.Touch
             pointer.PageY = (float)positionInRoot.Y;
             pointer.LocationX = (float)positionInView.X;
             pointer.LocationY = (float)positionInView.Y;
-            pointer.Timestamp = (ulong) timestamp;
+            pointer.Timestamp = (ulong)timestamp;
 
             pointer.ShiftKey = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
             pointer.AltKey = (Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt;
@@ -365,7 +356,7 @@ namespace ReactNative.Touch
             {
                 var pointerEvents = currentView.GetPointerEvents();
 
-                isBoxOnly = pointerEvents == PointerEvents.BoxOnly 
+                isBoxOnly = pointerEvents == PointerEvents.BoxOnly
                     || pointerEvents == PointerEvents.None
                     || IsBoxOnlyWithCacheRecursive(enumerator, cache);
 
