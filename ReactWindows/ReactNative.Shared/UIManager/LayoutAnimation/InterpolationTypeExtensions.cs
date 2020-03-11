@@ -37,7 +37,7 @@ namespace ReactNative.UIManager.LayoutAnimation
 
         public static EasingFunctionBase GetEasingFunction(this InterpolationType interpolationType, JObject data)
         {
-            var storyboard = new Storyboard();
+            //var storyboard = new Storyboard();
 
             switch (interpolationType)
             {

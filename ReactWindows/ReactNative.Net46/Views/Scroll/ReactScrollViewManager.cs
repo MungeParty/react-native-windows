@@ -7,6 +7,7 @@ using ReactNative.UIManager.Annotations;
 using ReactNative.UIManager.Events;
 using System;
 using System.Collections.Generic;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -25,6 +26,9 @@ namespace ReactNative.Views.Scroll
 
         private readonly IDictionary<ScrollView, ScrollViewerData> _scrollViewerData =
             new Dictionary<ScrollView, ScrollViewerData>();
+
+        private readonly IDictionary<ScrollView, CancellationTokenSource> _scrollThrottleCancellation =
+            new Dictionary<ScrollView, CancellationTokenSource>();
 
         /// <summary>
         /// The name of the view manager.
@@ -328,8 +332,13 @@ namespace ReactNative.Views.Scroll
                 _scollViewCancelMap[hashCode].Cancel();
                 _scollViewCancelMap.Remove(hashCode);
             }
-
-            view.ScrollChanged -= OnViewChanging;
+            var cts = _scrollThrottleCancellation[view];
+            if (cts != null)
+            {
+                cts.Cancel();
+                cts.Dispose();
+                _scrollThrottleCancellation.Remove(view);
+            }
             view.ManipulationStarted -= OnDirectManipulationStarted;
             view.ManipulationCompleted -= OnDirectManipulationCompleted;
         }
@@ -375,11 +384,12 @@ namespace ReactNative.Views.Scroll
                 Focusable = false,
                 PanningMode = PanningMode.Both,
             };
-
             _scrollViewerData.Add(scrollViewer, scrollViewerData);
 
             return scrollViewer;
         }
+
+
 
         /// <summary>
         /// Adds event emitters for drag and scroll events.
@@ -391,7 +401,32 @@ namespace ReactNative.Views.Scroll
             base.AddEventEmitters(reactContext, view);
             view.ManipulationStarted += OnDirectManipulationStarted;
             view.ManipulationCompleted += OnDirectManipulationCompleted;
-            view.ScrollChanged += OnViewChanging;
+
+            long lastTime = 0;
+            long timeout = 100;
+            _scrollThrottleCancellation[view] = null;
+            view.ScrollChanged += async (obj, args) =>
+            {
+                if (_scrollThrottleCancellation[view] != null)
+                {
+                    _scrollThrottleCancellation[view].Cancel();
+                    _scrollThrottleCancellation[view].Dispose();
+                    _scrollThrottleCancellation[view] = null;
+                }
+                long milliseconds = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                long diff = milliseconds - lastTime;
+                if (diff < timeout)
+                {
+                    _scrollThrottleCancellation[view] = new CancellationTokenSource();
+                    CancellationToken token = _scrollThrottleCancellation[view].Token;
+                    await Task.Delay(TimeSpan.FromMilliseconds(timeout));
+                    if (token.IsCancellationRequested) return;
+                }
+                milliseconds = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                diff = milliseconds - lastTime;
+                lastTime = milliseconds;
+                OnViewChanging(obj, args);
+            };
         }
 
         private void OnDirectManipulationCompleted(object sender, object e)
@@ -419,12 +454,25 @@ namespace ReactNative.Views.Scroll
         private void OnViewChanging(object sender, ScrollChangedEventArgs args)
         {
             var scrollViewer = (ScrollView)sender;
-            EmitScrollEvent(
-                scrollViewer,
-                ScrollEventType.Scroll,
-                args.HorizontalOffset,
-                args.VerticalOffset,
-                1);
+            var reactTag = scrollViewer.GetTag();
+            scrollViewer.GetReactContext()
+                .GetNativeModule<UIManagerModule>()
+                .EventDispatcher
+                .DispatchEvent(
+                    new ScrollEvent(
+                        reactTag,
+                        ScrollEventType.Scroll,
+                        new JObject
+                        {
+                            { "target", reactTag },
+                            { "responderIgnoreScroll", true },
+                            { "contentOffset",
+                                new JObject{
+                                    { "x", args.HorizontalOffset },
+                                    { "y",  args.VerticalOffset } }
+                            }
+                        }
+                        ));
         }
 
         private void EmitScrollEvent(
@@ -443,15 +491,15 @@ namespace ReactNative.Views.Scroll
                 { "y", y },
             };
 
-            // Distance the content view is inset from the enclosing scroll view
-            // TODO: Should these always be 0 for the XAML ScrollViewer?
-            var contentInset = new JObject
-            {
-                { "top", 0 },
-                { "bottom", 0 },
-                { "left", 0 },
-                { "right", 0 },
-            };
+            //// Distance the content view is inset from the enclosing scroll view
+            //// TODO: Should these always be 0 for the XAML ScrollViewer?
+            //var contentInset = new JObject
+            //{
+            //    { "top", 0 },
+            //    { "bottom", 0 },
+            //    { "left", 0 },
+            //    { "right", 0 },
+            //};
 
             // Size of the content view
             var contentSize = new JObject
@@ -479,7 +527,7 @@ namespace ReactNative.Views.Scroll
                             { "target", reactTag },
                             { "responderIgnoreScroll", true },
                             { "contentOffset", contentOffset },
-                            { "contentInset", contentInset },
+                            //{ "contentInset", contentInset },
                             { "contentSize", contentSize },
                             { "layoutMeasurement", layoutMeasurement },
                             { "zoomScale", zoomFactor },

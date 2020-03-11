@@ -26,6 +26,11 @@ namespace ReactNative.Bridge.Queue
         private bool _isDisposed = false;
 
         /// <summary>
+        /// IScheduler reference.
+        /// </summary>
+        public readonly IScheduler Runner;
+
+        /// <summary>
         /// Creates an action queue.
         /// </summary>
         /// <param name="onError">The error handler.</param>
@@ -49,6 +54,7 @@ namespace ReactNative.Bridge.Queue
 
             _onError = onError;
             _dispatchObserver = SetupSubscription(scheduler);
+            Runner = scheduler;
         }
 
         /// <summary>

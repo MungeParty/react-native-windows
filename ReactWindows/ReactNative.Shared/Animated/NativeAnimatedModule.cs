@@ -9,6 +9,11 @@ using ReactNative.Modules.Core;
 using ReactNative.UIManager;
 using System;
 using System.Collections.Generic;
+using System.Reactive.Concurrency;
+using System.Reactive.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using SysTask = System.Threading.Tasks.Task;
 
 namespace ReactNative.Animated
 {
@@ -70,7 +75,7 @@ namespace ReactNative.Animated
 
         private EventHandler<FrameEventArgs> _animatedFrameCallback;
 
-        private List<Action<NativeAnimatedNodesManager>> _operations = 
+        private List<Action<NativeAnimatedNodesManager>> _operations =
             new List<Action<NativeAnimatedNodesManager>>();
         private List<Action<NativeAnimatedNodesManager>> _preOperations =
             new List<Action<NativeAnimatedNodesManager>>();
@@ -226,14 +231,42 @@ namespace ReactNative.Animated
         [ReactMethod]
         public void startListeningToAnimatedNodeValue(int tag)
         {
-            AddOperation(manager =>
-                manager.StartListeningToAnimatedNodeValue(tag, value =>
-                    Context.GetJavaScriptModule<RCTDeviceEventEmitter>()
-                        .emit("onAnimatedValueUpdate", new JObject
-                        {
-                            { "tag", tag },
-                            { "value", value }
-                        })));
+            long lastTime = 0;
+            long timeout = 100;
+            CancellationTokenSource cts = new CancellationTokenSource();
+            AddOperation(manager => manager.StartListeningToAnimatedNodeValue(tag, async value =>
+            {
+                if (cts != null)
+                {
+                    cts.Cancel();
+                    cts.Dispose();
+                    cts = null;
+                }
+                long milliseconds = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                long diff = milliseconds - lastTime;
+                if (diff < timeout)
+                {
+                    cts = new CancellationTokenSource();
+                    CancellationToken token = cts.Token;
+                    await SysTask.Delay(TimeSpan.FromMilliseconds(timeout));
+                    if (token.IsCancellationRequested) return;
+                }
+                milliseconds = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                diff = milliseconds - lastTime;
+                //Console.WriteLine($"dt {diff}");
+                lastTime = milliseconds;
+                Context.GetJavaScriptModule<RCTDeviceEventEmitter>()
+                    .emit("onAnimatedValueUpdate", new JObject
+                    {
+                        { "tag", tag },
+                        { "value", value }
+                    });
+            }));
+        }
+
+        private int Task<T>(Func<object, Task> p)
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>

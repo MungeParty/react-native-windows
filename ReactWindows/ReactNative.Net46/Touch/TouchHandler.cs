@@ -45,26 +45,26 @@ namespace ReactNative.Touch
 
         public static void OnPointerEntered(DependencyObject view, MouseEventArgs e)
         {
-            if (ShouldSendEnterLeaveEvent(view))
-            {
-                view.GetReactContext()
-                    .GetNativeModule<UIManagerModule>()
-                    .EventDispatcher
-                    .DispatchEvent(
-                        new PointerEnterExitEvent(TouchEventType.Entered, view.GetTag()));
-            }
+            //if (ShouldSendEnterLeaveEvent(view))
+            //{
+            //    view.GetReactContext()
+            //        .GetNativeModule<UIManagerModule>()
+            //        .EventDispatcher
+            //        .DispatchEvent(
+            //            new PointerEnterExitEvent(TouchEventType.Entered, view.GetTag()));
+            //}
         }
 
         public static void OnPointerExited(DependencyObject view, MouseEventArgs e)
         {
-            if (ShouldSendEnterLeaveEvent(view))
-            {
-                view.GetReactContext()
-                    .GetNativeModule<UIManagerModule>()
-                    .EventDispatcher
-                    .DispatchEvent(
-                        new PointerEnterExitEvent(TouchEventType.Exited, view.GetTag()));
-            }
+            //if (ShouldSendEnterLeaveEvent(view))
+            //{
+            //    view.GetReactContext()
+            //        .GetNativeModule<UIManagerModule>()
+            //        .EventDispatcher
+            //        .DispatchEvent(
+            //            new PointerEnterExitEvent(TouchEventType.Exited, view.GetTag()));
+            //}
         }
 
         private void OnTouchPressed(object sender, TouchEventArgs e)
@@ -321,7 +321,6 @@ namespace ReactNative.Touch
             changedIndices.Add(JToken.FromObject(pointerIndex));
 
             var coalescingKey = activePointers[pointerIndex].PointerId;
-
             var touchEvent = new TouchEvent(touchEventType, touches, changedIndices, coalescingKey);
 
             _view.GetReactContext()?
@@ -459,7 +458,7 @@ namespace ReactNative.Touch
 
                 if (enterLeaveEventName != null)
                 {
-                    eventEmitter.receiveEvent(ViewTag, enterLeaveEventName, eventData);
+                    //eventEmitter.receiveEvent(ViewTag, enterLeaveEventName, eventData);
                 }
 
                 eventEmitter.receiveEvent(ViewTag, EventName, eventData);
