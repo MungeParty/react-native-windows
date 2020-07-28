@@ -44,6 +44,11 @@ namespace ReactNative.Modules.Network
         private bool _shuttingDown;
 
         /// <summary>
+        /// Whether to skip cert validation on SSL requests. (for testing)
+        /// </summary>
+        public static bool SkipCertValidation = false;
+
+        /// <summary>
         /// Instantiates the <see cref="NetworkingModule"/>.
         /// </summary>
         /// <param name="reactContext">The context.</param>
@@ -532,9 +537,12 @@ namespace ReactNative.Modules.Network
             {
                 AllowAutoRedirect = true,
             };
-#if DEBUG
-            filter.ServerCertificateValidationCallback = (message, certificate2, arg3, arg4) => true;
-#endif
+
+            if (SkipCertValidation)
+            {
+                filter.ServerCertificateValidationCallback = (message, certificate2, arg3, arg4) => true;
+            }
+
             return new DefaultHttpClient(new HttpClient(filter));
         }
     }
